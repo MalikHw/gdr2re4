@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Converts GDR replay format <-> RE4 (tobyadd/GDH) replay format
  * By MalikHw47
  *
@@ -10,9 +10,9 @@
  * isPlayer2 } [8 bytes]  uint64 inputSize inputSize  x { uint64 frame, uint8
  * down, int32 button, uint8 isPlayer2 }
  *
- * GDR format: handled by maxnut/GDReplayFormat (libGDR)
+ * GDR format: handled by maxnut/GDReplayFormat (libGDR, gdr2 branch)
+ * API note: use exportData(path) to save, importData(path) to load (static).
  */
-// trigger
 
 #include <gdr/gdr.hpp>
 
@@ -166,7 +166,7 @@ bool re4ToGdr(const fs::path &inPath, const fs::path &outPath) {
                       static_cast<float>(re4.tps);
   }
 
-  auto result = replay.save(outPath.string());
+  auto result = replay.exportData(outPath.string());
   if (result.isErr()) {
     std::cerr << "Error saving GDR: " << result.unwrapErr() << "\n";
     return false;
@@ -179,12 +179,13 @@ bool re4ToGdr(const fs::path &inPath, const fs::path &outPath) {
 }
 
 bool gdrToRe4(const fs::path &inPath, const fs::path &outPath) {
-  MhwBot replay;
-  auto result = replay.load(inPath.string());
+  auto result = MhwBot::importData(inPath);
   if (result.isErr()) {
     std::cerr << "Error loading GDR: " << result.unwrapErr() << "\n";
     return false;
   }
+
+  MhwBot replay = std::move(result.unwrap());
 
   RE4Replay re4;
   re4.tps = static_cast<float>(replay.framerate);
