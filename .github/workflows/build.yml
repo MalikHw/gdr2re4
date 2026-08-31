@@ -1,0 +1,52 @@
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  build-windows:
+    name: Build Windows (x64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -A x64
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Collect release files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          # Copy the executable
+          Copy-Item build/Release/gdr2re4.exe dist/ -ErrorAction SilentlyContinue
+          Copy-Item build/gdr2re4.exe         dist/ -ErrorAction SilentlyContinue
+          # Copy any DLLs sitting next to the exe
+          Get-ChildItem build/Release/*.dll -ErrorAction SilentlyContinue | Copy-Item -Destination dist/
+          Get-ChildItem build/*.dll         -ErrorAction SilentlyContinue | Copy-Item -Destination dist/
+          # fuck this fucking shit
+
+      - name: Create ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist/* -DestinationPath gdr2re4-windows-x64.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdr2re4-windows-x64
+          path: gdr2re4-windows-x64.zip
+          retention-days: 14
+
+      - name: Upload to Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: gdr2re4-windows-x64.zip
